@@ -29,20 +29,13 @@
             flex-direction: column;
             height: 100vh;
             box-sizing: border-box;
+            user-select: none;
         }
 
-        /* Estructura del Layout */
-        .main-container {
-            display: flex;
-            gap: 16px;
-            flex-grow: 1;
-        }
-
-        .left-col { flex: 1; display: flex; flex-direction: column; gap: 16px; }
-        .right-col { flex: 1; display: flex; flex-direction: column; gap: 16px; }
+        .main-container { display: flex; gap: 16px; flex-grow: 1; }
+        .left-col, .right-col { flex: 1; display: flex; flex-direction: column; gap: 16px; }
         .btn-col { width: 100px; display: flex; flex-direction: column; gap: 10px; }
 
-        /* Cajas de opciones (Group boxes) */
         .group-box {
             background-color: var(--panel-bg);
             border: 1px solid var(--border-color);
@@ -62,21 +55,14 @@
             font-weight: 600;
         }
 
-        /* Controles de formulario (Radios y Checkboxes estilo Adwaita) */
         .radio-group { display: flex; flex-direction: column; gap: 10px; }
         
-        label {
-            display: flex;
-            align-items: center;
-            cursor: pointer;
-            gap: 8px;
-        }
+        label { display: flex; align-items: center; cursor: pointer; gap: 8px; }
 
         input[type="radio"], input[type="checkbox"] {
             appearance: none;
             background-color: var(--btn-bg);
             margin: 0;
-            font: inherit;
             color: currentColor;
             width: 1.15em;
             height: 1.15em;
@@ -84,41 +70,23 @@
             display: grid;
             place-content: center;
         }
-
         input[type="radio"] { border-radius: 50%; }
         input[type="checkbox"] { border-radius: 4px; }
 
-        input[type="radio"]::before {
+        input[type="radio"]::before, input[type="checkbox"]::before {
             content: "";
-            width: 0.65em;
-            height: 0.65em;
-            border-radius: 50%;
             transform: scale(0);
             transition: 120ms transform ease-in-out;
             box-shadow: inset 1em 1em var(--accent-color);
         }
-
+        input[type="radio"]::before { width: 0.65em; height: 0.65em; border-radius: 50%; }
         input[type="checkbox"]::before {
-            content: "";
-            width: 0.65em;
-            height: 0.65em;
-            transform: scale(0);
-            transition: 120ms transform ease-in-out;
-            box-shadow: inset 1em 1em var(--accent-color);
+            width: 0.65em; height: 0.65em;
             transform-origin: bottom left;
             clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
         }
+        input[type="radio"]:checked::before, input[type="checkbox"]:checked::before { transform: scale(1); }
 
-        input[type="radio"]:checked::before, input[type="checkbox"]:checked::before {
-            transform: scale(1);
-        }
-
-        input[type="radio"]:focus, input[type="checkbox"]:focus {
-            outline: 2px solid var(--accent-color);
-            outline-offset: 2px;
-        }
-
-        /* Botones */
         button {
             background-color: var(--btn-bg);
             color: var(--text-main);
@@ -130,20 +98,13 @@
             cursor: pointer;
             transition: background 0.2s;
         }
-
         button:hover { background-color: var(--btn-hover); }
-
-        button.primary {
-            background-color: var(--accent-color);
-            border-color: var(--accent-color);
-        }
-
+        button.primary { background-color: var(--accent-color); border-color: var(--accent-color); }
         button.primary:hover { background-color: var(--accent-hover); }
 
-        /* Espacio para Anuncios */
         .ad-space {
             margin-top: 16px;
-            height: 90px; /* Altura típica de banner horizontal */
+            height: 90px;
             background-color: #1a1a1a;
             border: 1px dashed #555;
             border-radius: 8px;
@@ -190,8 +151,9 @@
             <div class="group-box">
                 <div class="group-title">Byte Order</div>
                 <div class="radio-group">
-                    <label><input type="radio" name="byte_order" value="IBM" checked> IBM PC</label>
-                    <label><input type="radio" name="byte_order" value="MACINTOSH"> Macintosh</label>
+                    <!-- Valores corregidos para el motor de Photopea -->
+                    <label><input type="radio" name="byte_order" value="IBMPC" checked> IBM PC</label>
+                    <label><input type="radio" name="byte_order" value="MACOS"> Macintosh</label>
                 </div>
             </div>
 
@@ -205,69 +167,75 @@
             </div>
         </div>
 
-        <!-- Columna de Botones -->
+        <!-- Botones -->
         <div class="btn-col">
             <button class="primary" onclick="exportTiff()">OK</button>
             <button onclick="closePlugin()">Cancel</button>
         </div>
     </div>
 
-    <!-- Espacio para el Anuncio -->
+    <!-- Espacio para Anuncios -->
     <div class="ad-space">
-        <!-- INSERTA AQUÍ TU SCRIPT DE ADSENSE O RED PUBLICITARIA -->
-        Espacio Publicitario Reservado<br>(728x90 o similar)
+        Espacio para tu código<br>de AdSense (728x90)
     </div>
 
     <script>
-        // Función para comunicarse con Photopea
-        function sendToPhotopea(script) {
-            window.parent.postMessage(script, "*");
-        }
-
-        // Función principal de exportación
         function exportTiff() {
-            // Recopilar valores de la interfaz
+            // Protección: Verificar si se está ejecutando en una pestaña suelta o dentro de Photopea
+            if (window.parent === window) {
+                alert("⚠️ Este plugin debe ejecutarse DENTRO de Photopea. (Ventana > Complementos > Añadir plugin local)");
+                return;
+            }
+
+            // Capturar las opciones seleccionadas
             const imgComp = document.querySelector('input[name="img_comp"]:checked').value;
             const byteOrder = document.querySelector('input[name="byte_order"]:checked').value;
             const layerComp = document.querySelector('input[name="layer_comp"]:checked').value;
             const transparency = document.getElementById('save_transparency').checked;
-            
-            // Construir el script que se ejecutará dentro de Photopea (ExtendScript)
-            let script = `
-                try {
-                    var doc = app.activeDocument;
-                    var opts = new TiffSaveOptions();
-                    
-                    opts.imageCompression = TIFFEncoding.${imgComp};
-                    opts.byteOrder = ByteOrder.${byteOrder};
-                    opts.transparency = ${transparency};
-                    
-                    // Manejo de capas
-                    if ("${layerComp}" === "DISCARD") {
-                        opts.layers = false;
-                    } else {
-                        opts.layers = true;
-                        opts.layerCompression = LayerCompression.${layerComp};
-                    }
 
-                    // Forzar diálogo de guardado del navegador
-                    var fileName = doc.name.split('.')[0] + ".tif";
-                    var file = new File(fileName);
-                    doc.saveAs(file, opts, true, Extension.LOWERCASE);
-                    
+            // Script ultra-seguro que se inyectará en Photopea
+            let scriptToRun = `
+                try {
+                    // 1. Validar que haya una imagen abierta
+                    if (app.documents.length === 0) {
+                        alert("⚠️ Por favor, abre una imagen antes de exportar a TIFF.");
+                    } else {
+                        var doc = app.activeDocument;
+                        var opts = new TiffSaveOptions();
+                        
+                        // 2. Asignar parámetros
+                        opts.imageCompression = TIFFEncoding.${imgComp};
+                        opts.byteOrder = ByteOrder.${byteOrder};
+                        opts.transparency = ${transparency};
+                        opts.alphaChannels = ${transparency};
+                        
+                        // 3. Manejo de capas
+                        if ("${layerComp}" === "DISCARD") {
+                            opts.layers = false;
+                        } else {
+                            opts.layers = true;
+                            opts.layerCompression = LayerCompression.${layerComp};
+                        }
+
+                        // 4. Limpiar nombre del archivo y forzar descarga
+                        var fName = doc.name;
+                        var dotIndex = fName.lastIndexOf('.');
+                        if(dotIndex > 0) { fName = fName.substring(0, dotIndex); }
+                        var file = new File(fName + ".tif");
+                        
+                        doc.saveAs(file, opts, true, Extension.LOWERCASE);
+                    }
                 } catch(e) {
-                    alert("Error al exportar: " + e);
+                    alert("Error interno al exportar: " + e.message);
                 }
             `;
 
-            // Enviar script a Photopea
-            sendToPhotopea(script);
+            // Enviar el comando a Photopea
+            window.parent.postMessage(scriptToRun, "*");
         }
 
-        // Cerrar el plugin (aunque en Photopea web a veces se hace clickando fuera)
         function closePlugin() {
-             // En Photopea, esto oculta la ventana del plugin si está en modo panel
-             sendToPhotopea('app.echoToOE("");'); 
+             window.parent.postMessage('app.echoToOE("close");', "*"); 
         }
     </script>
 </body>
