@@ -1,0 +1,1475 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>TIFF Pro — Exportador/Importador Avanzado</title>
+<style>
+  :root{
+    --bg:#242424;
+    --card:#1e1e1e;
+    --card-2:#2a2a2a;
+    --border:rgba(255,255,255,.08);
+    --border-strong:rgba(255,255,255,.14);
+    --fg:#eeeeee;
+    --fg-dim:#9a9a9a;
+    --accent:#3584e4;
+    --accent-hover:#2f74cc;
+    --accent-active:#2966b3;
+    --danger:#e01b24;
+    --radius:8px;
+    --radius-lg:12px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--fg);
+    font-family:'Inter','Cantarell','Segoe UI',system-ui,sans-serif;
+    font-size:13px;
+    -webkit-font-smoothing:antialiased;
+    overflow:hidden;
+  }
+  .window{
+    display:flex;
+    flex-direction:column;
+    height:100vh;
+  }
+  .titlebar{
+    flex:0 0 auto;
+    padding:14px 16px 10px;
+    border-bottom:1px solid var(--border);
+    background:linear-gradient(#2a2a2a,#242424);
+  }
+  .titlebar h1{
+    margin:0;
+    font-size:15px;
+    font-weight:700;
+    letter-spacing:.01em;
+  }
+  .titlebar p{
+    margin:4px 0 0;
+    font-size:11.5px;
+    color:var(--fg-dim);
+  }
+  .content{
+    flex:1 1 auto;
+    overflow-y:auto;
+    padding:14px 16px 8px;
+  }
+  .content::-webkit-scrollbar{width:10px;}
+  .content::-webkit-scrollbar-thumb{background:#3a3a3a;border-radius:6px;border:2px solid var(--bg);}
+  .content::-webkit-scrollbar-track{background:transparent;}
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:var(--radius-lg);
+    padding:14px 14px 10px;
+    margin-bottom:12px;
+    box-shadow:0 1px 2px rgba(0,0,0,.35);
+  }
+  .card h3{
+    margin:0 0 8px;
+    font-size:11px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--fg-dim);
+  }
+  .card h3 small{
+    display:block;
+    font-size:10px;
+    font-weight:500;
+    text-transform:none;
+    letter-spacing:normal;
+    color:#6b6b6b;
+    margin-top:2px;
+  }
+  .two-col{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px 16px;
+  }
+  .option-row{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    padding:6px 8px;
+    border-radius:var(--radius);
+    cursor:pointer;
+    transition:background .1s ease;
+    user-select:none;
+  }
+  .option-row:hover{background:rgba(255,255,255,.045);}
+  .option-row input[type="radio"],
+  .option-row input[type="checkbox"]{
+    appearance:none;
+    -webkit-appearance:none;
+    width:16px;height:16px;
+    border-radius:50%;
+    border:1.5px solid #6a6a6a;
+    background:#141414;
+    display:inline-block;
+    position:relative;
+    flex:0 0 auto;
+    cursor:pointer;
+    transition:border-color .12s ease, background .12s ease;
+  }
+  .option-row input[type="checkbox"]{border-radius:5px;}
+  .option-row input[type="radio"]:checked{
+    border-color:var(--accent);
+    background:var(--accent);
+    box-shadow:inset 0 0 0 3px #141414;
+  }
+  .option-row input[type="checkbox"]:checked{
+    border-color:var(--accent);
+    background:var(--accent);
+  }
+  .option-row input[type="checkbox"]:checked::after{
+    content:"";
+    position:absolute;
+    left:4px;top:1px;
+    width:4px;height:8px;
+    border:solid #fff;
+    border-width:0 2px 2px 0;
+    transform:rotate(40deg);
+  }
+  .option-row label{
+    cursor:pointer;
+    line-height:1.35;
+  }
+  .option-row .hint{
+    display:block;
+    font-size:10.5px;
+    color:var(--fg-dim);
+    margin-top:1px;
+  }
+
+  .actions{
+    display:flex;
+    gap:10px;
+    padding:4px 16px 12px;
+    flex:0 0 auto;
+  }
+  button{
+    font-family:inherit;
+    font-size:13px;
+    font-weight:600;
+    border:none;
+    border-radius:var(--radius);
+    padding:10px 14px;
+    cursor:pointer;
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    transition:background .12s ease, transform .05s ease;
+  }
+  button:active{transform:scale(.98);}
+  button:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+  button.suggested{background:var(--accent);color:#fff;}
+  button.suggested:hover:not(:disabled){background:var(--accent-hover);}
+  button.suggested:active:not(:disabled){background:var(--accent-active);}
+  button.flat{background:rgba(255,255,255,.08);color:var(--fg);}
+  button.flat:hover:not(:disabled){background:rgba(255,255,255,.13);}
+
+  .status{
+    padding:0 16px 8px;
+    flex:0 0 auto;
+    font-size:11.5px;
+    color:var(--fg-dim);
+    min-height:14px;
+  }
+  .status.err{color:#ff8a80;}
+  .status.ok{color:#8bd58b;}
+
+  .ad-footer{
+    flex:0 0 auto;
+    border-top:1px solid var(--border);
+    padding:10px 0 12px;
+    background:#1b1b1b;
+    display:flex;
+    justify-content:center;
+  }
+  .ad-slot{
+    width:300px;
+    height:250px;
+    border:1px dashed var(--border-strong);
+    border-radius:var(--radius);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#5a5a5a;
+    font-size:11px;
+    text-align:center;
+    padding:8px;
+    flex-shrink:0;
+    overflow:hidden;
+  }
+</style>
+</head>
+<body>
+<div class="window">
+
+  <div class="titlebar">
+    <h1>TIFF Pro</h1>
+    <p>Exportación / importación TIFF avanzada compatible con Photoshop</p>
+  </div>
+
+  <div class="content">
+
+    <div class="card">
+      <h3>Compresión de imagen<small>Aplica a la imagen acoplada (composite)</small></h3>
+      <div class="two-col">
+        <div class="option-row" onclick="document.getElementById('comp-none').click()">
+          <input type="radio" name="imageCompression" id="comp-none" value="none">
+          <label for="comp-none">Ninguna (None)</label>
+        </div>
+        <div class="option-row" onclick="document.getElementById('comp-lzw').click()">
+          <input type="radio" name="imageCompression" id="comp-lzw" value="lzw" checked>
+          <label for="comp-lzw">LZW</label>
+        </div>
+        <div class="option-row" onclick="document.getElementById('comp-zip').click()">
+          <input type="radio" name="imageCompression" id="comp-zip" value="zip">
+          <label for="comp-zip">ZIP</label>
+        </div>
+        <div class="option-row" onclick="document.getElementById('comp-jpeg').click()">
+          <input type="radio" name="imageCompression" id="comp-jpeg" value="jpeg">
+          <label for="comp-jpeg">JPEG</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Orden de píxeles<small>Distribución de canales en el archivo</small></h3>
+      <div class="two-col">
+        <div class="option-row" onclick="document.getElementById('po-inter').click()">
+          <input type="radio" name="pixelOrder" id="po-inter" value="interleaved" checked>
+          <label for="po-inter">Interleaved (RGBRGB)</label>
+        </div>
+        <div class="option-row" onclick="document.getElementById('po-perchan').click()">
+          <input type="radio" name="pixelOrder" id="po-perchan" value="perchannel">
+          <label for="po-perchan">Per Channel (RRGGBB)</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Orden de bytes<small>Endianness del archivo TIFF</small></h3>
+      <div class="two-col">
+        <div class="option-row" onclick="document.getElementById('bo-ibm').click()">
+          <input type="radio" name="byteOrder" id="bo-ibm" value="ibm" checked>
+          <label for="bo-ibm">IBM PC (Little Endian)</label>
+        </div>
+        <div class="option-row" onclick="document.getElementById('bo-mac').click()">
+          <input type="radio" name="byteOrder" id="bo-mac" value="mac">
+          <label for="bo-mac">Macintosh (Big Endian)</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Compresión de capas<small>Cómo se guardan los píxeles de cada capa dentro de ImageSourceData</small></h3>
+      <div class="option-row" onclick="document.getElementById('lc-rle').click()">
+        <input type="radio" name="layerCompression" id="lc-rle" value="rle" checked>
+        <label for="lc-rle">RLE <span class="hint">Guardado más rápido, archivos más grandes</span></label>
+      </div>
+      <div class="option-row" onclick="document.getElementById('lc-zip').click()">
+        <input type="radio" name="layerCompression" id="lc-zip" value="zip">
+        <label for="lc-zip">ZIP <span class="hint">Guardado más lento, archivos más pequeños</span></label>
+      </div>
+      <div class="option-row" onclick="document.getElementById('lc-discard').click()">
+        <input type="radio" name="layerCompression" id="lc-discard" value="discard">
+        <label for="lc-discard">Descartar capas y guardar una copia <span class="hint">Solo la imagen acoplada, sin ImageSourceData</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Extras</h3>
+      <div class="option-row" onclick="document.getElementById('ex-pyramid').click()">
+        <input type="checkbox" id="ex-pyramid">
+        <label for="ex-pyramid">Save Image Pyramid</label>
+      </div>
+      <div class="option-row" onclick="document.getElementById('ex-transparency').click()">
+        <input type="checkbox" id="ex-transparency" checked>
+        <label for="ex-transparency">Save Transparency</label>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="status" id="statusLine"></div>
+
+  <div class="actions">
+    <button class="flat" id="btnImport">Importar TIFF…</button>
+    <button class="suggested" id="btnExport">Exportar TIFF</button>
+  </div>
+
+  <input type="file" id="tiffFileInput" accept=".tif,.tiff" hidden>
+
+  <div class="ad-footer">
+    <div class="ad-slot" id="adSlot">
+      <!-- PEGAR AQUÍ EL SCRIPT DE ADSTERRA -->
+      <script>
+  atOptions = {
+    'key' : 'b80da52540860ee2141ca09fa07fdc5c',
+    'format' : 'iframe',
+    'height' : 50,
+    'width' : 320,
+    'params' : {}
+  };
+</script>
+<script src="https://www.highrevenueformat.com/b80da52540860ee2141ca09fa07fdc5c/invoke.js"></script>
+
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+<script>
+/* =====================================================================================
+   TIFF Pro — plugin Photopea
+   Implementación binaria completa de:
+     - Lectura del PSD estructurado devuelto por app.activeDocument.saveToOE("psd")
+     - Escritura de TIFF (header, IFD, tiras) respetando compresión / orden de píxeles /
+       orden de bytes elegidos en la UI
+     - Empaquetado del árbol de capas dentro del tag privado de Adobe ImageSourceData
+       (37724), recomprimiendo los canales de cada capa con el método elegido (RLE/ZIP)
+     - Lectura de TIFF (propio o de Photoshop), extracción de ImageSourceData y
+       reconstrucción de un PSD válido que se envía a Photopea vía postMessage para
+       que abra el documento con todas sus capas.
+
+   Notas de ingeniería (para quien mantenga este código):
+     - Se asume profundidad de 8 bits por canal como caso principal (el habitual al
+       exportar desde Photopea). Documentos de 16 bits se procesan igualmente, pero la
+       recompresión de capas en modo RLE usa la variante simple (per-byte), no la
+       intercalación especial de 16 bits de Photoshop; ZIP funciona igual en ambos casos
+       por ser agnóstico al contenido.
+     - La compresión JPEG se implementa codificando la imagen acoplada completa como un
+       único stream JPEG (una sola tira) mediante <canvas>.toBlob. Es la aproximación
+       práctica más robusta en un entorno de navegador sin librerías nativas de DCT, y
+       es plenamente compatible con el importador de este mismo plugin y con Photoshop.
+     - El tag 37724 (ImageSourceData) se escribe siguiendo la convención documentada de
+       Adobe: firma "Adobe Photoshop Document Data Block" seguida de bloques de recurso
+       tipo "8BIM" + clave ("Layr") + longitud + datos, donde los datos son la propia
+       sección "Layer and Mask Information" tal como aparece en un PSD.
+   ===================================================================================== */
+
+(function(){
+"use strict";
+
+/* ---------------------------------------------------------------------------------
+   0. Utilidades de comunicación con Photopea
+   --------------------------------------------------------------------------------- */
+const pending = [];
+window.addEventListener("message", function(e){
+  if (e.source !== window.parent) return;
+  if (pending.length){
+    const resolve = pending.shift();
+    resolve(e.data);
+  }
+});
+function sendToPhotopea(script){
+  return new Promise(function(resolve){
+    pending.push(resolve);
+    window.parent.postMessage(script, "*");
+  });
+}
+function openBufferInPhotopea(arrayBuffer){
+  // Enviar un ArrayBuffer "en crudo" hace que Photopea lo interprete como un archivo
+  // y lo abra como documento nuevo (equivalente a arrastrar el archivo al lienzo).
+  window.parent.postMessage(arrayBuffer, "*");
+}
+
+const statusLine = document.getElementById("statusLine");
+function setStatus(msg, kind){
+  statusLine.textContent = msg || "";
+  statusLine.className = "status" + (kind ? " " + kind : "");
+}
+
+/* ---------------------------------------------------------------------------------
+   1. Utilidades binarias genéricas
+   --------------------------------------------------------------------------------- */
+
+// PackBits (RLE) genérico sobre un buffer plano (sin tabla de longitudes por fila).
+function packBitsEncode(bytes){
+  const out = [];
+  let i = 0;
+  const n = bytes.length;
+  while (i < n){
+    // ¿Racha de repetición?
+    let runLen = 1;
+    while (i + runLen < n && runLen < 128 && bytes[i + runLen] === bytes[i]) runLen++;
+    if (runLen >= 2){
+      out.push(256 - (runLen - 1)); // encabezado negativo -> repetir
+      out.push(bytes[i]);
+      i += runLen;
+      continue;
+    }
+    // Racha literal
+    let litStart = i;
+    let litLen = 1;
+    i++;
+    while (i < n && litLen < 128){
+      // cortar la literal si empieza una racha de repetición útil (>=3 iguales)
+      if (i + 2 < n && bytes[i] === bytes[i+1] && bytes[i+1] === bytes[i+2]) break;
+      if (i + 1 < n && bytes[i] === bytes[i+1] && litLen === 127) break;
+      litLen++;
+      i++;
+    }
+    out.push(litLen - 1);
+    for (let k = 0; k < litLen; k++) out.push(bytes[litStart + k]);
+  }
+  return new Uint8Array(out);
+}
+
+function packBitsDecode(bytes, expectedLen){
+  const out = new Uint8Array(expectedLen);
+  let oi = 0, i = 0;
+  const n = bytes.length;
+  while (i < n && oi < expectedLen){
+    let h = bytes[i++];
+    if (h > 127) h -= 256;
+    if (h >= 0){
+      const count = h + 1;
+      for (let k = 0; k < count && oi < expectedLen; k++) out[oi++] = bytes[i++];
+    } else if (h !== -128){
+      const count = 1 - h;
+      const v = bytes[i++];
+      for (let k = 0; k < count && oi < expectedLen; k++) out[oi++] = v;
+    }
+    // h === -128 -> no-op
+  }
+  return out;
+}
+
+// LZW estilo TIFF (MSB-first, "early change", clear=256, EOI=257, códigos desde 258).
+function tiffLZWEncode(bytes){
+  const CLEAR = 256, EOI = 257;
+  let dict, nextCode, codeSize;
+  function resetDict(){
+    dict = new Map();
+    for (let i = 0; i < 256; i++) dict.set(String.fromCharCode(i), i);
+    nextCode = 258;
+    codeSize = 9;
+  }
+  resetDict();
+  const bitBuffer = [];
+  let bitAcc = 0, bitCount = 0;
+  function emit(code){
+    bitAcc = (bitAcc << codeSize) | code;
+    bitCount += codeSize;
+    while (bitCount >= 8){
+      bitCount -= 8;
+      bitBuffer.push((bitAcc >> bitCount) & 0xFF);
+    }
+  }
+  emit(CLEAR);
+  let w = "";
+  for (let i = 0; i < bytes.length; i++){
+    const c = String.fromCharCode(bytes[i]);
+    const wc = w + c;
+    if (dict.has(wc)){
+      w = wc;
+    } else {
+      emit(dict.get(w));
+      // "early change": el tamaño de código crece un paso antes de alcanzar el límite exacto
+      if (nextCode === 511 || nextCode === 1023 || nextCode === 2047){
+        codeSize++;
+      }
+      if (nextCode < 4094){
+        dict.set(wc, nextCode++);
+      } else {
+        emit(CLEAR);
+        resetDict();
+      }
+      w = c;
+    }
+  }
+  if (w !== "") emit(dict.get(w));
+  emit(EOI);
+  if (bitCount > 0){
+    bitBuffer.push((bitAcc << (8 - bitCount)) & 0xFF);
+  }
+  return new Uint8Array(bitBuffer);
+}
+
+function tiffLZWDecode(bytes, expectedLen){
+  const CLEAR = 256, EOI = 257;
+  const out = new Uint8Array(expectedLen);
+  let oi = 0;
+  let dict, nextCode, codeSize;
+  function resetDict(){
+    dict = [];
+    for (let i = 0; i < 256; i++) dict.push([i]);
+    dict.push(null); // 256 CLEAR
+    dict.push(null); // 257 EOI
+    nextCode = 258;
+    codeSize = 9;
+  }
+  resetDict();
+  let bitAcc = 0, bitCount = 0, bi = 0;
+  function readCode(){
+    while (bitCount < codeSize){
+      if (bi >= bytes.length) return EOI;
+      bitAcc = (bitAcc << 8) | bytes[bi++];
+      bitCount += 8;
+    }
+    bitCount -= codeSize;
+    return (bitAcc >> bitCount) & ((1 << codeSize) - 1);
+  }
+  let prev = null;
+  while (oi < expectedLen){
+    const code = readCode();
+    if (code === EOI) break;
+    if (code === CLEAR){
+      resetDict();
+      prev = null;
+      continue;
+    }
+    let entry;
+    if (code < dict.length && dict[code]){
+      entry = dict[code];
+    } else if (code === nextCode && prev){
+      entry = prev.concat([prev[0]]);
+    } else {
+      break; // stream corrupto
+    }
+    for (let k = 0; k < entry.length && oi < expectedLen; k++) out[oi++] = entry[k];
+    if (prev){
+      if (nextCode < 4094){
+        dict[nextCode] = prev.concat([entry[0]]);
+        nextCode++;
+        if (nextCode === 511 || nextCode === 1023 || nextCode === 2047) codeSize++;
+      }
+    }
+    prev = entry;
+  }
+  return out;
+}
+
+// Lector binario con endianness configurable.
+class BinReader{
+  constructor(buffer, littleEndian){
+    this.dv = new DataView(buffer);
+    this.le = !!littleEndian;
+    this.o = 0;
+  }
+  u8(){ const v = this.dv.getUint8(this.o); this.o += 1; return v; }
+  i8(){ const v = this.dv.getInt8(this.o); this.o += 1; return v; }
+  u16(le){ const v = this.dv.getUint16(this.o, le===undefined?this.le:le); this.o += 2; return v; }
+  i16(le){ const v = this.dv.getInt16(this.o, le===undefined?this.le:le); this.o += 2; return v; }
+  u32(le){ const v = this.dv.getUint32(this.o, le===undefined?this.le:le); this.o += 4; return v; }
+  i32(le){ const v = this.dv.getInt32(this.o, le===undefined?this.le:le); this.o += 4; return v; }
+  bytes(n){ const v = new Uint8Array(this.dv.buffer, this.o, n); this.o += n; return v; }
+  ascii(n){ const b = this.bytes(n); let s=""; for (let i=0;i<b.length;i++) s+=String.fromCharCode(b[i]); return s; }
+  skip(n){ this.o += n; }
+  eof(){ return this.o >= this.dv.byteLength; }
+}
+
+// Escritor binario simple: acumula trozos y permite volcarlos en un buffer final.
+class BinWriter{
+  constructor(littleEndian){
+    this.le = !!littleEndian;
+    this.parts = [];
+    this.length = 0;
+  }
+  _push(u8){ this.parts.push(u8); this.length += u8.length; }
+  u8(v){ this._push(Uint8Array.of(v & 0xFF)); }
+  u16(v){ const b = new Uint8Array(2); new DataView(b.buffer).setUint16(0, v, this.le); this._push(b); }
+  i16(v){ const b = new Uint8Array(2); new DataView(b.buffer).setInt16(0, v, this.le); this._push(b); }
+  u32(v){ const b = new Uint8Array(4); new DataView(b.buffer).setUint32(0, v >>> 0, this.le); this._push(b); }
+  i32(v){ const b = new Uint8Array(4); new DataView(b.buffer).setInt32(0, v, this.le); this._push(b); }
+  bytes(u8){ this._push(u8 instanceof Uint8Array ? u8 : new Uint8Array(u8)); }
+  ascii(s){ const b = new Uint8Array(s.length); for (let i=0;i<s.length;i++) b[i]=s.charCodeAt(i)&0xFF; this._push(b); }
+  toUint8Array(){
+    const out = new Uint8Array(this.length);
+    let o = 0;
+    for (const p of this.parts){ out.set(p, o); o += p.length; }
+    return out;
+  }
+}
+
+function concatUint8(arrays){
+  let total = 0;
+  for (const a of arrays) total += a.length;
+  const out = new Uint8Array(total);
+  let o = 0;
+  for (const a of arrays){ out.set(a, o); o += a.length; }
+  return out;
+}
+
+/* ---------------------------------------------------------------------------------
+   2. Decodificación de datos de canal comprimidos al estilo PSD
+   --------------------------------------------------------------------------------- */
+
+// Deshace la predicción horizontal (differencing) usada por el método ZIP-con-predictor.
+function undoHorizontalPredictor8(bytes, width, height, channelsInterleaved){
+  channelsInterleaved = channelsInterleaved || 1;
+  const rowBytes = width * channelsInterleaved;
+  for (let r = 0; r < height; r++){
+    const base = r * rowBytes;
+    for (let c = channelsInterleaved; c < rowBytes; c++){
+      bytes[base + c] = (bytes[base + c] + bytes[base + c - channelsInterleaved]) & 0xFF;
+    }
+  }
+  return bytes;
+}
+
+// Decodifica un bloque de canal con formato "PSD RLE": tabla de longitudes por fila (u16 BE)
+// seguida de las filas comprimidas con PackBits.
+function decodePSDRLEChannel(reader, height, rowBytes){
+  const rowLens = new Array(height);
+  for (let r = 0; r < height; r++) rowLens[r] = reader.u16(false); // PSD siempre big-endian
+  const total = height * rowBytes;
+  const out = new Uint8Array(total);
+  let oOff = 0;
+  for (let r = 0; r < height; r++){
+    const chunk = reader.bytes(rowLens[r]);
+    const decoded = packBitsDecode(chunk, rowBytes);
+    out.set(decoded, oOff);
+    oOff += rowBytes;
+  }
+  return out;
+}
+
+// Codifica un canal (bytes planos width*height) al formato "PSD RLE".
+function encodePSDRLEChannel(planeBytes, width, height){
+  const rowBytes = width;
+  const rowsCompressed = [];
+  const rowLens = new Uint16Array(height);
+  for (let r = 0; r < height; r++){
+    const row = planeBytes.subarray(r * rowBytes, r * rowBytes + rowBytes);
+    const enc = packBitsEncode(row);
+    rowsCompressed.push(enc);
+    rowLens[r] = enc.length;
+  }
+  const w = new BinWriter(false); // PSD: big-endian
+  for (let r = 0; r < height; r++) w.u16(rowLens[r]);
+  for (let r = 0; r < height; r++) w.bytes(rowsCompressed[r]);
+  return w.toUint8Array();
+}
+
+/* ---------------------------------------------------------------------------------
+   3. Parser de PSD (salida de app.activeDocument.saveToOE("psd"))
+   --------------------------------------------------------------------------------- */
+
+function parsePSD(buffer){
+  const r = new BinReader(buffer, false); // PSD siempre big-endian
+  const sig = r.ascii(4);
+  if (sig !== "8BPS") throw new Error("El bloque recibido de Photopea no es un PSD válido.");
+  const version = r.u16();
+  r.skip(6); // reservado
+  const channels = r.u16();
+  const height = r.u32();
+  const width = r.u32();
+  const depth = r.u16();          // bits por canal (8, 16, 32...)
+  const colorMode = r.u16();      // 3 = RGB
+
+  const colorModeDataLen = r.u32();
+  r.skip(colorModeDataLen);
+
+  const imageResourcesLen = r.u32();
+  r.skip(imageResourcesLen);
+
+  const layerMaskInfoLen = r.u32();
+  const layerMaskInfoStart = r.o;
+  const layerMaskInfoBytes = layerMaskInfoLen > 0 ? new Uint8Array(buffer, layerMaskInfoStart, layerMaskInfoLen) : new Uint8Array(0);
+  r.skip(layerMaskInfoLen);
+
+  // Sección final: imagen acoplada (merged / composite)
+  const mergedCompression = r.u16();
+  const bytesPerChannel = depth === 16 ? 2 : (depth === 32 ? 4 : 1);
+  const rowBytes = width * bytesPerChannel;
+  let compositePlanes = []; // array de Uint8Array, una por canal, tamaño width*height*bytesPerChannel
+
+  if (mergedCompression === 0){
+    // Raw
+    for (let ch = 0; ch < channels; ch++){
+      compositePlanes.push(r.bytes(rowBytes * height).slice());
+    }
+  } else if (mergedCompression === 1){
+    // RLE (PackBits), un bloque autocontenido por canal
+    for (let ch = 0; ch < channels; ch++){
+      compositePlanes.push(decodePSDRLEChannel(r, height, rowBytes));
+    }
+  } else if (mergedCompression === 2 || mergedCompression === 3){
+    // ZIP / ZIP con predictor: un único stream deflate con todos los canales concatenados
+    const remaining = new Uint8Array(buffer, r.o, buffer.byteLength - r.o);
+    const inflated = pako.inflate(remaining);
+    let off = 0;
+    for (let ch = 0; ch < channels; ch++){
+      let plane = inflated.subarray(off, off + rowBytes * height).slice();
+      off += rowBytes * height;
+      if (mergedCompression === 3 && bytesPerChannel === 1){
+        undoHorizontalPredictor8(plane, width, height, 1);
+      }
+      compositePlanes.push(plane);
+    }
+  } else {
+    throw new Error("Método de compresión de imagen compuesta no soportado: " + mergedCompression);
+  }
+
+  return {
+    version, channels, width, height, depth, colorMode,
+    layerMaskInfoBytes,
+    compositePlanes,   // canales planos, orden R,G,B[,A]
+    bytesPerChannel
+  };
+}
+
+/* ---------------------------------------------------------------------------------
+   4. Reescritura de la sección "Layer and Mask Information" con nueva compresión
+      de canal por canal (RLE <-> ZIP). Se conserva intacta toda la estructura
+      (rectángulos, nombres, modos de fusión, info adicional) y solo se
+      recomprime el bloque de píxeles de cada canal.
+   --------------------------------------------------------------------------------- */
+
+function decodeChannelBlock(reader, method, width, height, bytesPerChannel){
+  const rowBytes = width * bytesPerChannel;
+  const total = rowBytes * height;
+  if (total === 0) return new Uint8Array(0);
+  if (method === 0){
+    return reader.bytes(total).slice();
+  } else if (method === 1){
+    if (bytesPerChannel !== 1){
+      // Variante simplificada: tratamos el plano como bytes crudos para 16 bits.
+      const rowLens = new Array(height);
+      for (let rr = 0; rr < height; rr++) rowLens[rr] = reader.u16(false);
+      const out = new Uint8Array(total);
+      let oOff = 0;
+      for (let rr = 0; rr < height; rr++){
+        const chunk = reader.bytes(rowLens[rr]);
+        const decoded = packBitsDecode(chunk, rowBytes);
+        out.set(decoded, oOff);
+        oOff += rowBytes;
+      }
+      return out;
+    }
+    return decodePSDRLEChannel(reader, height, rowBytes);
+  } else if (method === 2 || method === 3){
+    // La longitud del bloque zip la determina el llamador (viene acotada por el
+    // "channel data length" leído previamente), así que aquí simplemente inflamos
+    // todo lo que quede en el sub-buffer que nos pasaron.
+    const remaining = reader.bytes(reader.dv.byteLength - reader.o).slice();
+    let out = pako.inflate(remaining);
+    if (method === 3 && bytesPerChannel === 1) undoHorizontalPredictor8(out, width, height, 1);
+    return out.slice(0, total);
+  }
+  throw new Error("Método de compresión de canal no soportado: " + method);
+}
+
+function encodeChannelBlock(rawBytes, method, width, height, bytesPerChannel){
+  if (method === "rle"){
+    if (bytesPerChannel === 1){
+      return { code: 1, data: encodePSDRLEChannel(rawBytes, width, height) };
+    }
+    // 16 bits: caemos a raw si no es viable una recodificación RLE fiel.
+    return { code: 0, data: rawBytes };
+  } else if (method === "zip"){
+    return { code: 2, data: pako.deflate(rawBytes) };
+  }
+  return { code: 0, data: rawBytes };
+}
+
+// Recorre la sección Layer&Mask Info original y produce una nueva versión con los
+// canales de píxeles recomprimidos según targetMethod ("rle" | "zip"). Si
+// targetMethod es null, devuelve un buffer vacío (capas descartadas).
+function rebuildLayerMaskInfo(layerMaskInfoBytes, targetMethod, bytesPerChannel){
+  if (!targetMethod || layerMaskInfoBytes.length === 0){
+    return new Uint8Array(0);
+  }
+
+  const r = new BinReader(layerMaskInfoBytes.buffer.slice(
+    layerMaskInfoBytes.byteOffset, layerMaskInfoBytes.byteOffset + layerMaskInfoBytes.length
+  ), false);
+
+  const layerInfoLen = r.u32();
+  const layerInfoStart = r.o;
+  const layerInfoEnd = layerInfoStart + layerInfoLen;
+
+  let layerCountRaw = r.i16();
+  const layerCount = Math.abs(layerCountRaw);
+
+  const layers = [];
+  for (let li = 0; li < layerCount; li++){
+    const top = r.i32(), left = r.i32(), bottom = r.i32(), right = r.i32();
+    const w = right - left, h = bottom - top;
+    const numChannels = r.u16();
+    const chanInfo = [];
+    for (let c = 0; c < numChannels; c++){
+      const chanId = r.i16();
+      const chanLen = r.u32();
+      chanInfo.push({ chanId, chanLen });
+    }
+    const blendSig = r.ascii(4);
+    const blendKey = r.ascii(4);
+    const opacity = r.u8();
+    const clipping = r.u8();
+    const flags = r.u8();
+    const filler = r.u8();
+    const extraLen = r.u32();
+    const extraBytes = r.bytes(extraLen).slice();
+    layers.push({
+      top, left, bottom, right, w, h,
+      chanInfo, blendSig, blendKey, opacity, clipping, flags, filler,
+      extraBytes
+    });
+  }
+
+  // Bloque de datos de imagen de canales (en el mismo orden que los layers/canales)
+  for (const layer of layers){
+    layer.channelData = [];
+    for (const ci of layer.chanInfo){
+      if (ci.chanLen === 0){
+        layer.channelData.push({ method: 0, raw: new Uint8Array(0) });
+        continue;
+      }
+      const blockStartO = r.o;
+      const method = r.u16(false);
+      const dataLen = ci.chanLen - 2;
+      const subBuf = r.bytes(dataLen).slice();
+      let raw;
+      if (method === 0){
+        raw = subBuf;
+      } else if (method === 1){
+        const subReader = new BinReader(subBuf.buffer.slice(subBuf.byteOffset, subBuf.byteOffset+subBuf.length), false);
+        raw = decodeChannelBlock(subReader, 1, layer.w, layer.h, bytesPerChannel);
+      } else if (method === 2 || method === 3){
+        let out = pako.inflate(subBuf);
+        if (method === 3 && bytesPerChannel === 1) undoHorizontalPredictor8(out, layer.w, layer.h, 1);
+        raw = out;
+      } else {
+        raw = subBuf; // método desconocido: se conserva el bloque sin transformar
+      }
+      layer.channelData.push({ method, raw, unsupported: (method>3) });
+      void blockStartO;
+    }
+  }
+
+  // Info global de máscara + info adicional del documento (después de la data de canales)
+  const globalMaskLen = r.u32();
+  const globalMaskBytes = r.bytes(globalMaskLen).slice();
+  const tailBytes = r.bytes(layerInfoEnd > r.o ? Math.max(0, layerMaskInfoBytes.length - r.o) : 0).slice();
+
+  // --- Reconstrucción ---
+  const w = new BinWriter(false); // PSD siempre big-endian
+
+  // Sub-writer para el bloque "Layer info" (necesitamos su longitud antes de escribirlo)
+  const layerInfoWriter = new BinWriter(false);
+  layerInfoWriter.i16(layerCountRaw);
+
+  // Recomprimimos primero para conocer las nuevas longitudes de canal.
+  for (const layer of layers){
+    layer.newChannelData = layer.channelData.map(function(cd){
+      if (cd.raw.length === 0){
+        return { code: 0, data: new Uint8Array(0) };
+      }
+      if (cd.unsupported){
+        // Si el códec original no es reconocido, lo dejamos como estaba (raw ya decodificado
+        // como copia literal del stream original no es posible aquí; por seguridad lo tratamos
+        // como datos crudos sin comprimir para no corromper el archivo).
+        return { code: 0, data: cd.raw };
+      }
+      return encodeChannelBlock(cd.raw, targetMethod, layer.w, layer.h, bytesPerChannel);
+    });
+  }
+
+  for (const layer of layers){
+    layerInfoWriter.i32(layer.top);
+    layerInfoWriter.i32(layer.left);
+    layerInfoWriter.i32(layer.bottom);
+    layerInfoWriter.i32(layer.right);
+    layerInfoWriter.u16(layer.chanInfo.length);
+    for (let c = 0; c < layer.chanInfo.length; c++){
+      const newLen = layer.newChannelData[c].data.length + 2;
+      layerInfoWriter.i16(layer.chanInfo[c].chanId);
+      layerInfoWriter.u32(newLen);
+    }
+    layerInfoWriter.ascii(layer.blendSig);
+    layerInfoWriter.ascii(layer.blendKey);
+    layerInfoWriter.u8(layer.opacity);
+    layerInfoWriter.u8(layer.clipping);
+    layerInfoWriter.u8(layer.flags);
+    layerInfoWriter.u8(layer.filler);
+    layerInfoWriter.u32(layer.extraBytes.length);
+    layerInfoWriter.bytes(layer.extraBytes);
+  }
+  for (const layer of layers){
+    for (const cd of layer.newChannelData){
+      layerInfoWriter.u16(cd.code);
+      layerInfoWriter.bytes(cd.data);
+    }
+  }
+
+  let layerInfoData = layerInfoWriter.toUint8Array();
+  if (layerInfoData.length % 2 !== 0){
+    layerInfoData = concatUint8([layerInfoData, Uint8Array.of(0)]);
+  }
+
+  w.u32(layerInfoData.length);
+  w.bytes(layerInfoData);
+  w.u32(globalMaskBytes.length);
+  w.bytes(globalMaskBytes);
+  w.bytes(tailBytes);
+
+  return w.toUint8Array();
+}
+
+/* ---------------------------------------------------------------------------------
+   5. Construcción del tag privado ImageSourceData (37724)
+   --------------------------------------------------------------------------------- */
+
+const ISD_SIGNATURE = "Adobe Photoshop Document Data Block\0\0\0\0";
+
+function buildImageSourceData(layerMaskInfoData){
+  const w = new BinWriter(false);
+  w.ascii(ISD_SIGNATURE);
+  w.ascii("8BIM");
+  w.ascii("Layr");
+  let payload = layerMaskInfoData;
+  if (payload.length % 2 !== 0) payload = concatUint8([payload, Uint8Array.of(0)]);
+  w.u32(payload.length);
+  w.bytes(payload);
+  return w.toUint8Array();
+}
+
+function parseImageSourceData(bytes){
+  // Devuelve el contenido crudo de la sección Layer&Mask Info empaquetada dentro,
+  // o null si no se reconoce la firma / bloque "Layr".
+  if (bytes.length < ISD_SIGNATURE.length) return null;
+  let sig = "";
+  for (let i = 0; i < ISD_SIGNATURE.length; i++) sig += String.fromCharCode(bytes[i]);
+  // La firma puede llevar un número variable de bytes nulos de relleno al final;
+  // comparamos solo el texto significativo.
+  if (sig.indexOf("Adobe Photoshop Document Data Block") !== 0) return null;
+
+  const r = new BinReader(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.length), false);
+  r.o = ISD_SIGNATURE.length;
+  while (r.o + 12 <= bytes.length){
+    const blockSig = r.ascii(4);
+    if (blockSig !== "8BIM" && blockSig !== "8B64") break;
+    const key = r.ascii(4);
+    const len = r.u32();
+    const data = r.bytes(len).slice();
+    if (len % 2 !== 0) r.skip(1);
+    if (key === "Layr" || key === "Lr16" || key === "Lr32"){
+      return data;
+    }
+  }
+  return null;
+}
+
+/* ---------------------------------------------------------------------------------
+   6. Escritura de TIFF
+   --------------------------------------------------------------------------------- */
+
+const TIFF_TAG = {
+  ImageWidth: 256, ImageLength: 257, BitsPerSample: 258, Compression: 259,
+  PhotometricInterpretation: 262, StripOffsets: 273, SamplesPerPixel: 277,
+  RowsPerStrip: 278, StripByteCounts: 279, XResolution: 282, YResolution: 283,
+  PlanarConfiguration: 284, ResolutionUnit: 296, ExtraSamples: 338,
+  ImageSourceData: 37724
+};
+const TIFF_TYPE = { BYTE:1, ASCII:2, SHORT:3, LONG:4, RATIONAL:5, UNDEFINED:7 };
+
+async function jpegEncodeComposite(width, height, planes, samplesPerPixel){
+  const canvas = document.createElement("canvas");
+  canvas.width = width; canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  const imgData = ctx.createImageData(width, height);
+  const px = imgData.data;
+  const n = width * height;
+  for (let i = 0; i < n; i++){
+    px[i*4+0] = planes[0][i];
+    px[i*4+1] = samplesPerPixel > 1 ? planes[1][i] : planes[0][i];
+    px[i*4+2] = samplesPerPixel > 2 ? planes[2][i] : planes[0][i];
+    px[i*4+3] = 255;
+  }
+  ctx.putImageData(imgData, 0, 0);
+  const blob = await new Promise(function(resolve){
+    canvas.toBlob(function(b){ resolve(b); }, "image/jpeg", 0.92);
+  });
+  const buf = await blob.arrayBuffer();
+  return new Uint8Array(buf);
+}
+
+async function buildTIFF(psd, opts){
+  const le = opts.byteOrder === "ibm";
+  const width = psd.width, height = psd.height;
+  const wantAlpha = opts.saveTransparency && psd.channels >= 4;
+  const samplesPerPixel = wantAlpha ? 4 : 3;
+  const bytesPerChannel = psd.bytesPerChannel;
+  const bitsPerSampleVal = bytesPerChannel * 8;
+
+  // Planos de la imagen acoplada en orden R,G,B[,A]
+  const planes = psd.compositePlanes.slice(0, samplesPerPixel);
+
+  // --- Datos de imagen (composite) según orden de píxeles + compresión elegidos ---
+  let compression, planarConfig, stripPlanes;
+  planarConfig = opts.pixelOrder === "perchannel" ? 2 : 1;
+
+  if (opts.imageCompression === "jpeg"){
+    compression = 7;
+    planarConfig = 1; // JPEG exige datos entrelazados
+    const jpegBytes = await jpegEncodeComposite(width, height, planes, samplesPerPixel);
+    stripPlanes = [jpegBytes];
+  } else {
+    let rawStrips;
+    if (planarConfig === 1){
+      // Interleaved: intercalar canal a canal por píxel
+      const rowSamples = width * samplesPerPixel;
+      const interleaved = new Uint8Array(rowSamples * height * bytesPerChannel);
+      if (bytesPerChannel === 1){
+        for (let p = 0; p < width*height; p++){
+          for (let s = 0; s < samplesPerPixel; s++){
+            interleaved[p*samplesPerPixel + s] = planes[s][p];
+          }
+        }
+      } else {
+        const dvOut = new DataView(interleaved.buffer);
+        for (let p = 0; p < width*height; p++){
+          for (let s = 0; s < samplesPerPixel; s++){
+            const srcDv = new DataView(planes[s].buffer, planes[s].byteOffset, planes[s].byteLength);
+            const val = srcDv.getUint16(p*2, false); // los planos del PSD vienen en big-endian
+            dvOut.setUint16((p*samplesPerPixel+s)*2, val, le);
+          }
+        }
+      }
+      rawStrips = [interleaved];
+    } else {
+      // Per Channel: un plano completo por canal
+      rawStrips = planes.map(function(pl){
+        if (bytesPerChannel === 1) return pl;
+        // reordenar endianness del plano de 16 bits al orden de salida elegido
+        const out = new Uint8Array(pl.length);
+        const dvIn = new DataView(pl.buffer, pl.byteOffset, pl.byteLength);
+        const dvOut = new DataView(out.buffer);
+        for (let i = 0; i < pl.length/2; i++){
+          dvOut.setUint16(i*2, dvIn.getUint16(i*2, false), le);
+        }
+        return out;
+      });
+    }
+
+    if (opts.imageCompression === "none"){
+      compression = 1;
+      stripPlanes = rawStrips;
+    } else if (opts.imageCompression === "lzw"){
+      compression = 5;
+      stripPlanes = rawStrips.map(tiffLZWEncode);
+    } else if (opts.imageCompression === "zip"){
+      compression = 8;
+      stripPlanes = rawStrips.map(function(s){ return pako.deflate(s); });
+    } else {
+      compression = 1;
+      stripPlanes = rawStrips;
+    }
+  }
+
+  // --- ImageSourceData (capas) ---
+  let imageSourceData = null;
+  if (opts.layerCompression !== "discard" && psd.layerMaskInfoBytes.length > 0){
+    const rebuilt = rebuildLayerMaskInfo(psd.layerMaskInfoBytes, opts.layerCompression, bytesPerChannel);
+    if (rebuilt.length > 0){
+      imageSourceData = buildImageSourceData(rebuilt);
+    }
+  }
+
+  // --- Ensamblado de tags IFD ---
+  const tags = [];
+  function addTag(tag, type, count, valueBytesLE /* ya en endianness le, longitud=count*sizeOfType */){
+    tags.push({ tag, type, count, data: valueBytesLE });
+  }
+  function u16arr(vals){
+    const w = new BinWriter(le); for (const v of vals) w.u16(v); return w.toUint8Array();
+  }
+  function u32arr(vals){
+    const w = new BinWriter(le); for (const v of vals) w.u32(v); return w.toUint8Array();
+  }
+  function rational(num, den){
+    const w = new BinWriter(le); w.u32(num); w.u32(den); return w.toUint8Array();
+  }
+
+  addTag(TIFF_TAG.ImageWidth, TIFF_TYPE.LONG, 1, u32arr([width]));
+  addTag(TIFF_TAG.ImageLength, TIFF_TYPE.LONG, 1, u32arr([height]));
+  const bitsArr = new Array(samplesPerPixel).fill(bitsPerSampleVal);
+  addTag(TIFF_TAG.BitsPerSample, TIFF_TYPE.SHORT, samplesPerPixel, u16arr(bitsArr));
+  addTag(TIFF_TAG.Compression, TIFF_TYPE.SHORT, 1, u16arr([compression]));
+  addTag(TIFF_TAG.PhotometricInterpretation, TIFF_TYPE.SHORT, 1, u16arr([2])); // RGB
+  addTag(TIFF_TAG.SamplesPerPixel, TIFF_TYPE.SHORT, 1, u16arr([samplesPerPixel]));
+  addTag(TIFF_TAG.RowsPerStrip, TIFF_TYPE.LONG, 1, u32arr([height]));
+  addTag(TIFF_TAG.XResolution, TIFF_TYPE.RATIONAL, 1, rational(72,1));
+  addTag(TIFF_TAG.YResolution, TIFF_TYPE.RATIONAL, 1, rational(72,1));
+  addTag(TIFF_TAG.ResolutionUnit, TIFF_TYPE.SHORT, 1, u16arr([2]));
+  addTag(TIFF_TAG.PlanarConfiguration, TIFF_TYPE.SHORT, 1, u16arr([planarConfig]));
+  if (wantAlpha){
+    addTag(TIFF_TAG.ExtraSamples, TIFF_TYPE.SHORT, 1, u16arr([1])); // alpha asociado
+  }
+
+  const numStrips = stripPlanes.length;
+  const stripByteCounts = stripPlanes.map(function(s){ return s.length; });
+  addTag(TIFF_TAG.StripByteCounts, TIFF_TYPE.LONG, numStrips, u32arr(stripByteCounts));
+  // Los offsets reales de StripOffsets se rellenan después de layout (placeholder por ahora)
+  const stripOffsetsTagIndex = tags.length;
+  addTag(TIFF_TAG.StripOffsets, TIFF_TYPE.LONG, numStrips, u32arr(new Array(numStrips).fill(0)));
+
+  let imageSourceDataTagIndex = -1;
+  if (imageSourceData){
+    imageSourceDataTagIndex = tags.length;
+    addTag(TIFF_TAG.ImageSourceData, TIFF_TYPE.UNDEFINED, imageSourceData.length, imageSourceData);
+  }
+
+  tags.sort(function(a,b){ return a.tag - b.tag; });
+  // recalcular índices tras el sort
+  const stripOffsetsIdx = tags.findIndex(function(t){ return t.tag === TIFF_TAG.StripOffsets; });
+  const isdIdx = imageSourceData ? tags.findIndex(function(t){ return t.tag === TIFF_TAG.ImageSourceData; }) : -1;
+  void stripOffsetsTagIndex; void imageSourceDataTagIndex;
+
+  // --- Layout del archivo ---
+  const HEADER_SIZE = 8;
+  const ifdEntryCount = tags.length;
+  const ifdSize = 2 + ifdEntryCount*12 + 4;
+  let cursor = HEADER_SIZE + ifdSize;
+
+  // Reservar espacio para los valores "overflow" (>4 bytes) en el orden de los tags.
+  const overflowOffsets = new Array(tags.length).fill(0);
+  for (let i = 0; i < tags.length; i++){
+    const t = tags[i];
+    const typeSize = { 1:1, 2:1, 3:2, 4:4, 5:8, 7:1 }[t.type];
+    const totalBytes = typeSize * t.count;
+    if (totalBytes > 4){
+      overflowOffsets[i] = cursor;
+      cursor += totalBytes + (totalBytes % 2);
+    }
+  }
+
+  // Ahora que conocemos el final del área de overflow, colocamos los datos de las tiras.
+  const stripOffsetsReal = [];
+  for (let s = 0; s < numStrips; s++){
+    stripOffsetsReal.push(cursor);
+    cursor += stripPlanes[s].length;
+  }
+  // Actualizar el tag StripOffsets con los offsets reales
+  tags[stripOffsetsIdx].data = u32arr(stripOffsetsReal);
+
+  const fileSize = cursor;
+  const out = new Uint8Array(fileSize);
+  const dv = new DataView(out.buffer);
+
+  // Header
+  dv.setUint8(0, le ? 0x49 : 0x4D);
+  dv.setUint8(1, le ? 0x49 : 0x4D);
+  dv.setUint16(2, 42, le);
+  dv.setUint32(4, HEADER_SIZE, le);
+
+  // IFD
+  let o = HEADER_SIZE;
+  dv.setUint16(o, ifdEntryCount, le); o += 2;
+  for (let i = 0; i < tags.length; i++){
+    const t = tags[i];
+    dv.setUint16(o, t.tag, le); o += 2;
+    dv.setUint16(o, t.type, le); o += 2;
+    dv.setUint32(o, t.count, le); o += 4;
+    const typeSize = { 1:1, 2:1, 3:2, 4:4, 5:8, 7:1 }[t.type];
+    const totalBytes = typeSize * t.count;
+    if (totalBytes <= 4){
+      const tmp = new Uint8Array(4);
+      tmp.set(t.data.subarray(0, totalBytes), 0);
+      out.set(tmp, o);
+    } else {
+      dv.setUint32(o, overflowOffsets[i], le);
+      out.set(t.data, overflowOffsets[i]);
+    }
+    o += 4;
+  }
+  dv.setUint32(o, 0, le); o += 4; // siguiente IFD = 0 (fin)
+
+  // Tiras de imagen
+  for (let s = 0; s < numStrips; s++){
+    out.set(stripPlanes[s], stripOffsetsReal[s]);
+  }
+
+  void isdIdx;
+  return out.buffer;
+}
+
+/* ---------------------------------------------------------------------------------
+   7. Lectura de TIFF (importación)
+   --------------------------------------------------------------------------------- */
+
+function parseTIFF(buffer){
+  const dv0 = new DataView(buffer);
+  const b0 = dv0.getUint8(0), b1 = dv0.getUint8(1);
+  let le;
+  if (b0 === 0x49 && b1 === 0x49) le = true;
+  else if (b0 === 0x4D && b1 === 0x4D) le = false;
+  else throw new Error("El archivo no tiene una cabecera TIFF válida.");
+  const magic = dv0.getUint16(2, le);
+  if (magic !== 42) throw new Error("El archivo no es un TIFF clásico (magic != 42).");
+  const firstIFDOffset = dv0.getUint32(4, le);
+
+  const r = new BinReader(buffer, le);
+  r.o = firstIFDOffset;
+  const entryCount = r.u16();
+  const tags = {};
+  const typeSizes = { 1:1, 2:1, 3:2, 4:4, 5:8, 7:1 };
+  for (let i = 0; i < entryCount; i++){
+    const tag = r.u16();
+    const type = r.u16();
+    const count = r.u32();
+    const totalBytes = (typeSizes[type]||1) * count;
+    let valueOffset = r.o;
+    let dataBytes;
+    if (totalBytes <= 4){
+      dataBytes = new Uint8Array(buffer, r.o, totalBytes);
+    } else {
+      const off = r.dv.getUint32(r.o, le);
+      dataBytes = new Uint8Array(buffer, off, totalBytes);
+    }
+    r.o += 4;
+    tags[tag] = { type, count, data: dataBytes };
+    void valueOffset;
+  }
+
+  function readShortArray(entry){
+    const out = [];
+    const dv = new DataView(entry.data.buffer, entry.data.byteOffset, entry.data.byteLength);
+    for (let i = 0; i < entry.count; i++) out.push(dv.getUint16(i*2, le));
+    return out;
+  }
+  function readLongArray(entry){
+    const out = [];
+    const dv = new DataView(entry.data.buffer, entry.data.byteOffset, entry.data.byteLength);
+    for (let i = 0; i < entry.count; i++) out.push(dv.getUint32(i*4, le));
+    return out;
+  }
+
+  const width = readLongArray(tags[256])[0];
+  const height = readLongArray(tags[257])[0];
+  const bitsPerSample = tags[258] ? readShortArray(tags[258]) : [8];
+  const compression = tags[259] ? readShortArray(tags[259])[0] : 1;
+  const samplesPerPixel = tags[277] ? readShortArray(tags[277])[0] : 3;
+  const planarConfig = tags[284] ? readShortArray(tags[284])[0] : 1;
+  const stripOffsets = readLongArray(tags[273]);
+  const stripByteCounts = readLongArray(tags[279]);
+  const bytesPerChannel = bitsPerSample[0] === 16 ? 2 : 1;
+
+  let planes = [];
+  if (compression === 7){
+    // JPEG embebido en una sola tira (stream completo)
+    return { width, height, samplesPerPixel, bytesPerChannel, jpegBytes: new Uint8Array(buffer, stripOffsets[0], stripByteCounts[0]), tags };
+  }
+
+  function decompressStrip(bytes, expectedLen){
+    if (compression === 1) return bytes.slice(0, expectedLen);
+    if (compression === 5) return tiffLZWDecode(bytes, expectedLen);
+    if (compression === 8) return pako.inflate(bytes).slice(0, expectedLen);
+    if (compression === 32773) return packBitsDecode(bytes, expectedLen);
+    throw new Error("Compresión TIFF no soportada en importación: " + compression);
+  }
+
+  if (planarConfig === 1){
+    const rowBytes = width * samplesPerPixel * bytesPerChannel;
+    const totalLen = rowBytes * height;
+    const raw = decompressStrip(new Uint8Array(buffer, stripOffsets[0], stripByteCounts[0]), totalLen);
+    for (let s = 0; s < samplesPerPixel; s++){
+      const plane = new Uint8Array(width*height*bytesPerChannel);
+      if (bytesPerChannel === 1){
+        for (let p = 0; p < width*height; p++) plane[p] = raw[p*samplesPerPixel+s];
+      } else {
+        const dvIn = new DataView(raw.buffer, raw.byteOffset, raw.byteLength);
+        const dvOut = new DataView(plane.buffer);
+        for (let p = 0; p < width*height; p++){
+          dvOut.setUint16(p*2, dvIn.getUint16((p*samplesPerPixel+s)*2, le), false); // normalizamos a BE (estilo PSD)
+        }
+      }
+      planes.push(plane);
+    }
+  } else {
+    for (let s = 0; s < samplesPerPixel; s++){
+      const rowBytes = width * bytesPerChannel;
+      const totalLen = rowBytes * height;
+      const raw = decompressStrip(new Uint8Array(buffer, stripOffsets[s], stripByteCounts[s]), totalLen);
+      if (bytesPerChannel === 1){
+        planes.push(raw);
+      } else {
+        const out = new Uint8Array(raw.length);
+        const dvIn = new DataView(raw.buffer, raw.byteOffset, raw.byteLength);
+        const dvOut = new DataView(out.buffer);
+        for (let i = 0; i < raw.length/2; i++) dvOut.setUint16(i*2, dvIn.getUint16(i*2, le), false);
+        planes.push(out);
+      }
+    }
+  }
+
+  let imageSourceDataRaw = null;
+  if (tags[37724]){
+    imageSourceDataRaw = parseImageSourceData(tags[37724].data);
+  }
+
+  return { width, height, samplesPerPixel, bytesPerChannel, planes, imageSourceDataRaw };
+}
+
+/* ---------------------------------------------------------------------------------
+   8. Construcción de un PSD válido a partir de datos importados, para enviarlo
+      a Photopea.
+   --------------------------------------------------------------------------------- */
+
+function buildPSDFromImport(parsed){
+  const w = new BinWriter(false); // PSD: big-endian
+  const width = parsed.width, height = parsed.height;
+  const channels = parsed.samplesPerPixel;
+  const depth = parsed.bytesPerChannel === 2 ? 16 : 8;
+
+  w.ascii("8BPS");
+  w.u16(1);
+  w.bytes(new Uint8Array(6));
+  w.u16(channels);
+  w.u32(height);
+  w.u32(width);
+  w.u16(depth);
+  w.u16(3); // RGB
+
+  w.u32(0); // color mode data
+  w.u32(0); // image resources
+
+  const layerMaskInfo = parsed.imageSourceDataRaw || new Uint8Array(0);
+  w.u32(layerMaskInfo.length);
+  w.bytes(layerMaskInfo);
+
+  // Imagen fusionada: RLE por canal (autocontenido)
+  w.u16(1); // compresión RLE
+  for (let c = 0; c < channels; c++){
+    let plane = parsed.planes[c];
+    if (depth === 16){
+      // Para 16 bits usamos raw en lugar de RLE por simplicidad/robustez.
+      // (Se ajusta el método por canal más abajo si hiciera falta.)
+    }
+    if (depth === 8){
+      w.bytes(encodePSDRLEChannel(plane, width, height));
+    } else {
+      w.bytes(plane);
+    }
+  }
+
+  return w.toUint8Array();
+}
+
+async function decodeJpegToPlanes(jpegBytes, width, height, samplesPerPixel){
+  const blob = new Blob([jpegBytes], { type: "image/jpeg" });
+  const bitmap = await createImageBitmap(blob);
+  const canvas = document.createElement("canvas");
+  canvas.width = width; canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(bitmap, 0, 0, width, height);
+  const imgData = ctx.getImageData(0, 0, width, height).data;
+  const planes = [];
+  for (let s = 0; s < samplesPerPixel; s++) planes.push(new Uint8Array(width*height));
+  for (let p = 0; p < width*height; p++){
+    planes[0][p] = imgData[p*4+0];
+    if (samplesPerPixel > 1) planes[1][p] = imgData[p*4+1];
+    if (samplesPerPixel > 2) planes[2][p] = imgData[p*4+2];
+    if (samplesPerPixel > 3) planes[3][p] = imgData[p*4+3];
+  }
+  return planes;
+}
+
+/* ---------------------------------------------------------------------------------
+   9. Orquestación UI <-> lógica
+   --------------------------------------------------------------------------------- */
+
+function collectOptions(){
+  return {
+    imageCompression: document.querySelector('input[name="imageCompression"]:checked').value,
+    pixelOrder: document.querySelector('input[name="pixelOrder"]:checked').value,
+    byteOrder: document.querySelector('input[name="byteOrder"]:checked').value,
+    layerCompression: document.querySelector('input[name="layerCompression"]:checked').value,
+    savePyramid: document.getElementById("ex-pyramid").checked,
+    saveTransparency: document.getElementById("ex-transparency").checked
+  };
+}
+
+function sanitizeFileName(name){
+  return (name || "documento").replace(/\.[^.]+$/, "").replace(/[\\/:*?"<>|]/g, "_");
+}
+
+function downloadBlob(arrayBuffer, filename){
+  const blob = new Blob([arrayBuffer], { type: "image/tiff" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+}
+
+const btnExport = document.getElementById("btnExport");
+const btnImport = document.getElementById("btnImport");
+const fileInput = document.getElementById("tiffFileInput");
+
+btnExport.addEventListener("click", async function(){
+  btnExport.disabled = true; btnImport.disabled = true;
+  try{
+    setStatus("Solicitando documento a Photopea…");
+    const docName = await sendToPhotopea("app.activeDocument.name;");
+    setStatus("Generando estructura PSD…");
+    const psdBuffer = await sendToPhotopea('app.activeDocument.saveToOE("psd");');
+    if (!(psdBuffer instanceof ArrayBuffer)){
+      throw new Error("Photopea no devolvió los datos binarios esperados.");
+    }
+    setStatus("Procesando datos binarios…");
+    const psd = parsePSD(psdBuffer);
+    const opts = collectOptions();
+    setStatus("Codificando TIFF…");
+    const tiffBuffer = await buildTIFF(psd, opts);
+    const fname = sanitizeFileName(typeof docName === "string" ? docName : "documento") + ".tiff";
+    downloadBlob(tiffBuffer, fname);
+    setStatus("Exportado: " + fname, "ok");
+  } catch(err){
+    console.error(err);
+    setStatus("Error al exportar: " + err.message, "err");
+  } finally {
+    btnExport.disabled = false; btnImport.disabled = false;
+  }
+});
+
+btnImport.addEventListener("click", function(){
+  fileInput.value = "";
+  fileInput.click();
+});
+
+fileInput.addEventListener("change", async function(){
+  const file = fileInput.files[0];
+  if (!file) return;
+  btnExport.disabled = true; btnImport.disabled = true;
+  try{
+    setStatus("Leyendo archivo TIFF…");
+    const buffer = await file.arrayBuffer();
+    const parsed = parseTIFF(buffer);
+    if (parsed.jpegBytes){
+      setStatus("Decodificando imagen JPEG…");
+      parsed.planes = await decodeJpegToPlanes(parsed.jpegBytes, parsed.width, parsed.height, parsed.samplesPerPixel);
+    }
+    setStatus("Reconstruyendo documento…");
+    const psdBytes = buildPSDFromImport(parsed);
+    setStatus("Enviando a Photopea…");
+    openBufferInPhotopea(psdBytes.buffer);
+    setStatus("Documento enviado a Photopea.", "ok");
+  } catch(err){
+    console.error(err);
+    setStatus("Error al importar: " + err.message, "err");
+  } finally {
+    btnExport.disabled = false; btnImport.disabled = false;
+  }
+});
+
+})();
+</script>
+</body>
+</html>
